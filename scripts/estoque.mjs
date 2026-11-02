@@ -278,6 +278,45 @@ export async function entregarItem(actor, itemData, qtd) {
   return criado;
 }
 
+/* ── Menu de contexto (v13 e v14) ───────────── */
+
+/**
+ * Ator da linha do diretório clicada. O v13 passa o elemento da linha (ou,
+ * em código antigo, um jQuery); o v14 pode passar o evento antes dele.
+ * Procura em todos os argumentos o elemento com data-entry-id.
+ */
+function atorDoMenu(...args) {
+  for (const arg of args) {
+    let el = arg?.[0] ?? arg;
+    if (!(el instanceof HTMLElement)) el = arg?.currentTarget ?? arg?.target ?? null;
+    if (!(el instanceof HTMLElement)) continue;
+    const linha = el.closest?.('[data-entry-id], [data-document-id]') ?? el;
+    const id = linha.dataset?.entryId ?? linha.dataset?.documentId;
+    const ator = id ? game.actors?.get(id) : null;
+    if (ator) return ator;
+  }
+  return null;
+}
+
+/**
+ * Entrada de menu de contexto nos dois formatos: o do v13 (name, callback,
+ * condition) e o do v14 (label, onClick, visible). Cada versão lê as suas
+ * chaves e ignora as outras.
+ */
+function entradaDeMenu({ rotulo, icone, visivel, acao }) {
+  const condicao = (...args) => visivel(atorDoMenu(...args));
+  const clique = (...args) => {
+    const ator = atorDoMenu(...args);
+    if (ator) acao(ator);
+  };
+  return {
+    name: rotulo, label: rotulo,
+    icon: icone,
+    condition: condicao, visible: condicao,
+    callback: clique, onClick: clique,
+  };
+}
+
 /* ── Configuração, menu de contexto e atualização das janelas ── */
 
 /** Re-renderiza as vitrines abertas (o estoque mudou ou trocou). */
@@ -324,34 +363,25 @@ export function registrarEstoque() {
 
   // Botão direito num ator do diretório: marcar/desmarcar como mercador.
   Hooks.on('getActorContextOptions', (_app, opcoes) => {
-    const atorDe = li => {
-      const el = li?.[0] ?? li;
-      const id = el?.dataset?.entryId ?? el?.dataset?.documentId;
-      return id ? game.actors.get(id) : null;
-    };
     opcoes.push(
-      {
-        name: 'Tornar mercador da loja',
-        icon: '<i class="fas fa-store"></i>',
-        condition: li => game.user.isGM && !ehMercador(atorDe(li)),
-        callback: async li => {
-          const ator = atorDe(li);
-          if (!ator) return;
+      entradaDeMenu({
+        rotulo : 'Tornar mercador da loja',
+        icone  : '<i class="fas fa-store"></i>',
+        visivel: ator => game.user.isGM && !!ator && !ehMercador(ator),
+        acao   : async ator => {
           await ator.setFlag(MODULE_ID, FLAG_MERCADOR, true);
-          ui.notifications.info(`${ator.name} agora é um mercador. Escolha-o como estoque no topo da loja.`);
+          ui.notifications.info(`${ator.name} agora é um mercador. Escolha-o em "Estoque", no topo da loja.`);
         },
-      },
-      {
-        name: 'Deixar de ser mercador da loja',
-        icon: '<i class="fas fa-store-slash"></i>',
-        condition: li => game.user.isGM && ehMercador(atorDe(li)),
-        callback: async li => {
-          const ator = atorDe(li);
-          if (!ator) return;
+      }),
+      entradaDeMenu({
+        rotulo : 'Deixar de ser mercador da loja',
+        icone  : '<i class="fas fa-store-slash"></i>',
+        visivel: ator => game.user.isGM && ehMercador(ator),
+        acao   : async ator => {
           if (ator.id === idMercadorAtivo()) await game.settings.set(MODULE_ID, 'mercadorAtivo', '');
           await ator.unsetFlag(MODULE_ID, FLAG_MERCADOR);
         },
-      },
+      }),
     );
   });
 }
