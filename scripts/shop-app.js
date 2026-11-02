@@ -17,7 +17,7 @@ import { AprimorarApplication } from './aprimorar-app.js';
 import { agitarLamparina } from './lamparina.mjs';
 import { ehV14 } from './versao.mjs';
 import {
-  mercadorAtivo, idMercadorAtivo, listarMercadores, itemVendavelDoEstoque, quantidadeEmEstoque,
+  mercadorAtivo, idMercadorAtivo, listarMercadores, ehMercador, itemVendavelDoEstoque, quantidadeEmEstoque,
   retirarDoEstoque, depositarNoEstoque, entregarItem,
 } from './estoque.mjs';
 
@@ -961,6 +961,9 @@ export class ShopApplication extends Application {
       podeEscolher: isGM,
       ativoId     : ativo?.id ?? '',
       nome        : ativo?.name ?? '',
+      // Loja aberta PARA um mercador: ele não aparece no seletor (não compra
+      // de si mesmo), e a dica certa é abrir pela ficha de um comprador.
+      ehOProprioMercador: isGM && ehMercador(this.actor),
       mercadores  : isGM
         ? listarMercadores()
           .filter(m => m.id !== this.actor?.id)

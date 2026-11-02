@@ -52,9 +52,11 @@
         <i class="fas fa-user-edit"></i>
       </button>
       {{/if}}
-      {{#unless estoque.mercadores.length}}
+      {{#if estoque.ehOProprioMercador}}
+      <span class="estoque-dica">{{actor.name}} é um mercador: para comprar dele, abra a loja pela ficha de um personagem comprador.</span>
+      {{else}}{{#unless estoque.mercadores.length}}
       <span class="estoque-dica">Para limitar o estoque, clique com o botão direito num ator na aba Atores e escolha "Tornar mercador da loja".</span>
-      {{/unless}}
+      {{/unless}}{{/if}}
     {{else}}
       <span>Negociando com <strong>{{estoque.nome}}</strong>: só o que ele tem em estoque.</span>
     {{/if}}
